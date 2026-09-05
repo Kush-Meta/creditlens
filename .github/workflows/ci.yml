@@ -1,0 +1,108 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Lint
+        run: python -m ruff check creditlens tests scripts
+
+      - name: Type check
+        run: python -m mypy creditlens
+        continue-on-error: true
+
+      # The whole suite runs offline: the demo corpus is synthetic and the
+      # deterministic engine needs no credentials, so CI never calls SEC or
+      # the Anthropic API.
+      - name: Test
+        env:
+          CREDITLENS_LLM_PROVIDER: offline
+        run: python -m pytest --cov=creditlens --cov-report=xml --cov-report=term
+
+      # The gate runs the hand-written suite plus the fixture-generated suite
+      # against the synthetic corpus, which needs no network. Cases scoped to
+      # real issuers are reported as skipped rather than failed. The 167-case
+      # `universe` suite requires an EDGAR ingest and is run on demand.
+      - name: Evaluation regression gate
+        env:
+          CREDITLENS_LLM_PROVIDER: offline
+        run: |
+          python -m creditlens.cli seed
+          python -m creditlens.cli eval --suite golden,fixtures --offline --json > eval.json
+          python - <<'PY'
+          import json, sys
+          metrics = json.load(open("eval.json"))["metrics"]["headline"]
+          # Floors, not targets: these guard against regressions in the
+          # deterministic path, which is what CI can measure without a key.
+          floors = {
+              "numeric_accuracy": 0.95,
+              "citation_validity": 1.00,
+              "retrieval_ndcg_at_k": 0.50,
+              "direction_accuracy": 0.90,
+          }
+          ceilings = {"unsupported_claim_rate": 0.05}
+          failed = []
+          for name, floor in floors.items():
+              value = metrics.get(name)
+              print(f"{name:32} {value}  (floor {floor})")
+              if value is None or value < floor:
+                  failed.append(f"{name}={value} below floor {floor}")
+          for name, ceiling in ceilings.items():
+              value = metrics.get(name)
+              print(f"{name:32} {value}  (ceiling {ceiling})")
+              if value is None or value > ceiling:
+                  failed.append(f"{name}={value} above ceiling {ceiling}")
+          if failed:
+              sys.exit("evaluation regression:\n  " + "\n  ".join(failed))
+          print("evaluation gate passed")
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-${{ matrix.python-version }}
+          path: eval.json
+          if-no-files-found: ignore
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t creditlens:ci .
+      - name: Boot and health check
+        run: |
+          docker run -d --name creditlens -p 8000:8000 creditlens:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/health >/dev/null; then
+              echo "healthy after ${i}s"; break
+            fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8000/health | head -c 400
+          docker rm -f creditlens

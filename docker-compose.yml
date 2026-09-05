@@ -1,0 +1,57 @@
+# Default stack is the app alone on SQLite - the corpus is small enough that a
+# separate database server buys nothing. Bring up the `postgres` profile when
+# you want the Postgres path:
+#
+#   docker compose --profile postgres up
+services:
+  api:
+    build: .
+    image: creditlens:latest
+    ports:
+      - "8000:8000"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CREDITLENS_ENV: ${CREDITLENS_ENV:-dev}
+      CREDITLENS_MODEL: ${CREDITLENS_MODEL:-claude-opus-5}
+      CREDITLENS_LOG_FORMAT: json
+      CREDITLENS_EDGAR_USER_AGENT: ${CREDITLENS_EDGAR_USER_AGENT:-CreditLens/0.1 (contact@example.com)}
+    volumes:
+      - creditlens-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  api-postgres:
+    profiles: ["postgres"]
+    build: .
+    image: creditlens:latest
+    ports:
+      - "8000:8000"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CREDITLENS_DATABASE_URL: postgresql+psycopg://creditlens:creditlens@postgres:5432/creditlens
+      CREDITLENS_LOG_FORMAT: json
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    profiles: ["postgres"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: creditlens
+      POSTGRES_PASSWORD: creditlens
+      POSTGRES_DB: creditlens
+    volumes:
+      - creditlens-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U creditlens"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  creditlens-data:
+  creditlens-pg:

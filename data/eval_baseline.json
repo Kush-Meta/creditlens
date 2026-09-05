@@ -1,0 +1,67 @@
+{
+  "corpus": {
+    "companies": 8,
+    "real": 4,
+    "filings": 44,
+    "chunks": 3609,
+    "facts": 5586
+  },
+  "headline": {
+    "cases": 26,
+    "numeric_accuracy": 0.9678,
+    "unsupported_claim_rate": 0.0322,
+    "citation_validity": 1.0,
+    "ground_truth_metric_accuracy": 0.8667,
+    "reported_period_match": 0.7333,
+    "retrieval_recall_at_k": 0.3937,
+    "retrieval_recall_normalized": 0.6333,
+    "retrieval_ndcg_at_k": 0.6737,
+    "tool_selection_f1": 0.5392,
+    "direction_accuracy": 1.0,
+    "latency_p50_ms": 101.75,
+    "latency_p95_ms": 140.326,
+    "mean_cost_usd": 0.0,
+    "total_duration_s": 3.3
+  },
+  "ablation": {
+    "lexical_only": {
+      "recall_normalized": 0.6533,
+      "recall_at_k": 0.3964,
+      "precision_at_k": 0.595,
+      "mrr": 0.8454,
+      "ndcg_at_k": 0.6871
+    },
+    "dense_only": {
+      "recall_normalized": 0.5317,
+      "recall_at_k": 0.3318,
+      "precision_at_k": 0.475,
+      "mrr": 0.8307,
+      "ndcg_at_k": 0.5896
+    },
+    "hybrid_rrf_50_50": {
+      "recall_normalized": 0.5667,
+      "recall_at_k": 0.3553,
+      "precision_at_k": 0.51,
+      "mrr": 0.8257,
+      "ndcg_at_k": 0.6219
+    },
+    "hybrid_rrf_mmr": {
+      "recall_normalized": 0.4567,
+      "recall_at_k": 0.2715,
+      "precision_at_k": 0.41,
+      "mrr": 0.86,
+      "ndcg_at_k": 0.4912
+    },
+    "shipped_default": {
+      "recall_normalized": 0.6333,
+      "recall_at_k": 0.3937,
+      "precision_at_k": 0.575,
+      "mrr": 0.8617,
+      "ndcg_at_k": 0.6737
+    }
+  },
+  "retrieval_latency_ms": {
+    "p50": 37.220333935692906,
+    "p95": 63.92837502062321
+  }
+}

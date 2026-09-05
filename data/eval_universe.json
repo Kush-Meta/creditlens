@@ -1,0 +1,357 @@
+{
+  "corpus": {
+    "companies": 46,
+    "real": 42,
+    "filings": 516,
+    "chunks": 76758,
+    "facts": 34066
+  },
+  "headline": {
+    "cases": 193,
+    "numeric_accuracy": 1.0,
+    "unsupported_claim_rate": 0.0,
+    "citation_validity": 1.0,
+    "ground_truth_metric_accuracy": 0.9272,
+    "reported_period_match": 0.9078,
+    "retrieval_recall_at_k": 0.0735,
+    "retrieval_recall_normalized": 0.5202,
+    "retrieval_ndcg_at_k": 0.5736,
+    "tool_selection_f1": 0.368,
+    "direction_accuracy": 1.0,
+    "latency_p50_ms": 423.938,
+    "latency_p95_ms": 487.949,
+    "mean_cost_usd": 0.0,
+    "total_duration_s": 95.26
+  },
+  "slices": {
+    "by_category": {
+      "calculation": {
+        "cases": 60,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.6289,
+        "tool_selection_f1": 0.3117,
+        "latency_p50_ms": 424.1
+      },
+      "cash_flow": {
+        "cases": 11,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.4764,
+        "tool_selection_f1": 0.2987,
+        "latency_p50_ms": 427.3
+      },
+      "causal": {
+        "cases": 11,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.363,
+        "tool_selection_f1": 0.3846,
+        "latency_p50_ms": 417.1
+      },
+      "comparison": {
+        "cases": 14,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.5,
+        "retrieval_ndcg_at_k": 0.4972,
+        "tool_selection_f1": 0.3163,
+        "latency_p50_ms": 415.8
+      },
+      "data_gap": {
+        "cases": 2,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": null,
+        "retrieval_ndcg_at_k": 1.0,
+        "tool_selection_f1": 0.7857,
+        "latency_p50_ms": 351.9
+      },
+      "liquidity": {
+        "cases": 16,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.3924,
+        "tool_selection_f1": 0.5893,
+        "latency_p50_ms": 421.5
+      },
+      "profile": {
+        "cases": 19,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.5296,
+        "tool_selection_f1": 0.542,
+        "latency_p50_ms": 430.6
+      },
+      "risk": {
+        "cases": 43,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": null,
+        "retrieval_ndcg_at_k": 0.7028,
+        "tool_selection_f1": 0.2946,
+        "latency_p50_ms": 426.3
+      },
+      "trend": {
+        "cases": 17,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.9333,
+        "retrieval_ndcg_at_k": 0.5083,
+        "tool_selection_f1": 0.3765,
+        "latency_p50_ms": 432.1
+      }
+    },
+    "by_sector": {
+      "Autos": {
+        "cases": 13,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.8,
+        "retrieval_ndcg_at_k": 0.7163,
+        "tool_selection_f1": 0.3425,
+        "latency_p50_ms": 425.9
+      },
+      "Consumer Staples": {
+        "cases": 13,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.8333,
+        "retrieval_ndcg_at_k": 0.5079,
+        "tool_selection_f1": 0.3388,
+        "latency_p50_ms": 448.1
+      },
+      "Energy": {
+        "cases": 8,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": null,
+        "retrieval_ndcg_at_k": 0.4009,
+        "tool_selection_f1": 0.3244,
+        "latency_p50_ms": 427.6
+      },
+      "Healthcare": {
+        "cases": 17,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.4793,
+        "tool_selection_f1": 0.3568,
+        "latency_p50_ms": 434.4
+      },
+      "Industrials": {
+        "cases": 18,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.604,
+        "tool_selection_f1": 0.328,
+        "latency_p50_ms": 426.2
+      },
+      "Real Estate": {
+        "cases": 11,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.8,
+        "retrieval_ndcg_at_k": 0.5148,
+        "tool_selection_f1": 0.3506,
+        "latency_p50_ms": 412.1
+      },
+      "Retail": {
+        "cases": 21,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.9615,
+        "retrieval_ndcg_at_k": 0.605,
+        "tool_selection_f1": 0.3503,
+        "latency_p50_ms": 419.9
+      },
+      "Technology": {
+        "cases": 25,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.9688,
+        "retrieval_ndcg_at_k": 0.5521,
+        "tool_selection_f1": 0.3638,
+        "latency_p50_ms": 429.9
+      },
+      "Telecom": {
+        "cases": 17,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.95,
+        "retrieval_ndcg_at_k": 0.657,
+        "tool_selection_f1": 0.3431,
+        "latency_p50_ms": 430.6
+      },
+      "Travel & Leisure": {
+        "cases": 13,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.95,
+        "retrieval_ndcg_at_k": 0.4758,
+        "tool_selection_f1": 0.2857,
+        "latency_p50_ms": 418.2
+      },
+      "Utilities": {
+        "cases": 11,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.9375,
+        "retrieval_ndcg_at_k": 0.7069,
+        "tool_selection_f1": 0.3376,
+        "latency_p50_ms": 420.4
+      }
+    },
+    "by_profile": {
+      "cyclical_stressed": {
+        "cases": 24,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.5895,
+        "tool_selection_f1": 0.3174,
+        "latency_p50_ms": 423.9
+      },
+      "investment_grade": {
+        "cases": 40,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.5902,
+        "tool_selection_f1": 0.3369,
+        "latency_p50_ms": 428.8
+      },
+      "leveraged": {
+        "cases": 44,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.5674,
+        "tool_selection_f1": 0.3522,
+        "latency_p50_ms": 433.8
+      },
+      "mixed": {
+        "cases": 11,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.45,
+        "retrieval_ndcg_at_k": 0.4691,
+        "tool_selection_f1": 0.29,
+        "latency_p50_ms": 419.9
+      },
+      "net_cash": {
+        "cases": 28,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.5669,
+        "tool_selection_f1": 0.3648,
+        "latency_p50_ms": 429.3
+      },
+      "structurally_levered": {
+        "cases": 20,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 1.0,
+        "retrieval_ndcg_at_k": 0.5846,
+        "tool_selection_f1": 0.35,
+        "latency_p50_ms": 418.3
+      }
+    },
+    "by_origin": {
+      "generated": {
+        "cases": 167,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.9375,
+        "retrieval_ndcg_at_k": 0.5715,
+        "tool_selection_f1": 0.3413,
+        "latency_p50_ms": 426.2
+      },
+      "hand-written": {
+        "cases": 26,
+        "numeric_accuracy": 1.0,
+        "unsupported_claim_rate": 0.0,
+        "citation_validity": 1.0,
+        "ground_truth_metric_accuracy": 0.8667,
+        "retrieval_ndcg_at_k": 0.5875,
+        "tool_selection_f1": 0.5392,
+        "latency_p50_ms": 385.5
+      }
+    }
+  },
+  "ablation": {
+    "lexical_only": {
+      "recall_normalized": 0.5299,
+      "recall_at_k": 0.0723,
+      "precision_at_k": 0.5254,
+      "mrr": 0.8041,
+      "ndcg_at_k": 0.5813
+    },
+    "dense_only": {
+      "recall_normalized": 0.5195,
+      "recall_at_k": 0.0726,
+      "precision_at_k": 0.515,
+      "mrr": 0.7948,
+      "ndcg_at_k": 0.5738
+    },
+    "hybrid_rrf_50_50": {
+      "recall_normalized": 0.5182,
+      "recall_at_k": 0.0715,
+      "precision_at_k": 0.5137,
+      "mrr": 0.7997,
+      "ndcg_at_k": 0.5708
+    },
+    "hybrid_rrf_mmr": {
+      "recall_normalized": 0.4386,
+      "recall_at_k": 0.0564,
+      "precision_at_k": 0.4349,
+      "mrr": 0.8228,
+      "ndcg_at_k": 0.4816
+    },
+    "shipped_default": {
+      "recall_normalized": 0.5202,
+      "recall_at_k": 0.0735,
+      "precision_at_k": 0.5156,
+      "mrr": 0.7957,
+      "ndcg_at_k": 0.5736
+    }
+  },
+  "latency": {
+    "p50": 31.257665948942304,
+    "p95": 43.52524993009865
+  }
+}
