@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CreditLens</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>📊</text></svg>">
+</head>
+<body>
+<header class="top">
+  <div>
+    <div class="brand">Credit<span>Lens</span></div>
+    <div class="tagline">Evidence-grounded credit analysis · LLM reasoning over deterministic computation</div>
+  </div>
+  <div class="status-pills" id="status-pills"></div>
+</header>
+
+<div class="layout">
+  <aside>
+    <section>
+      <h2>Corpus</h2>
+      <div id="company-list" class="muted">loading…</div>
+    </section>
+
+    <section>
+      <h2>Ingest from SEC EDGAR</h2>
+      <div class="ingest-row">
+        <input type="text" id="ingest-ticker" placeholder="e.g. NVDA" maxlength="8" autocomplete="off">
+        <button class="btn" id="ingest-btn">Add</button>
+      </div>
+      <div id="ingest-status" class="muted" style="margin-top:8px"></div>
+    </section>
+
+    <section>
+      <h2>Demo corpus</h2>
+      <button class="btn" id="seed-btn" style="width:100%">Load fictional issuers</button>
+      <div class="muted" style="margin-top:8px">
+        Four invented companies with synthetic financials, for offline demos and tests.
+      </div>
+    </section>
+  </aside>
+
+  <main>
+    <div class="tabs">
+      <button class="tab active" data-panel="analyze">Analyze</button>
+      <button class="tab" data-panel="metrics">Metrics</button>
+      <button class="tab" data-panel="search">Filing search</button>
+      <button class="tab" data-panel="evaluation">Evaluation</button>
+    </div>
+
+    <!-- ANALYZE -->
+    <section class="panel" id="panel-analyze">
+      <form class="ask-form" id="ask-form">
+        <input type="text" id="question" autocomplete="off"
+               placeholder="Has Oracle's credit profile improved over the last year?">
+        <button class="btn primary" id="ask-btn" type="submit">Analyze</button>
+      </form>
+      <div class="examples" id="examples"></div>
+      <div id="analysis-output"></div>
+    </section>
+
+    <!-- METRICS -->
+    <section class="panel" id="panel-metrics" hidden>
+      <div class="ask-form">
+        <select id="metrics-ticker"></select>
+        <select id="metrics-period">
+          <option value="TTM">TTM</option>
+          <option value="latest">Latest period</option>
+        </select>
+        <button class="btn" id="metrics-btn">Load</button>
+      </div>
+      <div id="metrics-output" class="muted">Pick an issuer to compute the full ratio set.</div>
+    </section>
+
+    <!-- SEARCH -->
+    <section class="panel" id="panel-search" hidden>
+      <form class="ask-form" id="search-form">
+        <input type="text" id="search-query" autocomplete="off"
+               placeholder="revolving credit facility covenant headroom">
+        <select id="search-item">
+          <option value="">All sections</option>
+          <option value="1">Item 1 — Business</option>
+          <option value="1A">Item 1A — Risk Factors</option>
+          <option value="7">Item 7 — MD&amp;A</option>
+          <option value="7A">Item 7A — Market Risk</option>
+          <option value="8">Item 8 — Financial Statements</option>
+        </select>
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+      <div id="search-output" class="muted">Hybrid BM25 + dense retrieval with reciprocal rank fusion.</div>
+    </section>
+
+    <!-- EVALUATION -->
+    <section class="panel" id="panel-evaluation" hidden>
+      <div class="ask-form">
+        <button class="btn" id="eval-btn">Run golden suite (deterministic engine)</button>
+        <button class="btn" id="eval-history-btn">Past runs</button>
+      </div>
+      <div class="muted" style="margin-bottom:14px">
+        Measures retrieval quality, numeric accuracy against independently recomputed
+        ground truth, citation validity, unsupported-claim rate, latency and cost.
+      </div>
+      <div id="eval-output"></div>
+    </section>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

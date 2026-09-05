@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "creditlens",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "uvicorn", "creditlens.api.app:app", "--host", "127.0.0.1", "--port", "8010"],
+      "port": 8010
+    }
+  ]
+}
