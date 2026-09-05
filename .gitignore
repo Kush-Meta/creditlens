@@ -1,0 +1,31 @@
+__pycache__/
+*.py[cod]
+.Python
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+.env
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+# The corpus is rebuilt with `make universe`; it is 2 GB and not source.
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/edgar_cache/
+data/*.log
+data/*.txt
+# measured results are kept - they are the evidence behind the README
+!data/eval_baseline.json
+!data/eval_universe.json
+.DS_Store
+.idea/
+.vscode/
+
+# scratch
+scratch/
+*.orig

@@ -1,0 +1,90 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "creditlens"
+version = "0.1.0"
+description = "Evidence-grounded credit analysis of public companies from SEC filings and XBRL data."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "CreditLens" }]
+keywords = ["credit-analysis", "rag", "sec-edgar", "xbrl", "llm", "fintech"]
+classifiers = [
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Office/Business :: Financial :: Investment",
+]
+
+dependencies = [
+  "anthropic>=0.40",
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "pydantic>=2.6",
+  "pydantic-settings>=2.2",
+  "sqlalchemy>=2.0",
+  "httpx>=0.26",
+  "beautifulsoup4>=4.12",
+  "lxml>=5.0",
+  "numpy>=1.26",
+  "typer>=0.12",
+  "rich>=13.7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=4.1",
+  "ruff>=0.4",
+  "mypy>=1.9",
+]
+postgres = ["psycopg[binary]>=3.1"]
+
+[project.scripts]
+creditlens = "creditlens.cli:main"
+
+[project.urls]
+Documentation = "https://github.com/example/creditlens#readme"
+
+[tool.setuptools.packages.find]
+include = ["creditlens*"]
+
+[tool.setuptools.package-data]
+creditlens = ["eval/datasets/*.jsonl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = [
+  "ignore::DeprecationWarning",
+  "ignore:.*XMLParsedAsHTMLWarning.*",
+]
+
+[tool.coverage.run]
+source = ["creditlens"]
+omit = ["creditlens/cli.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+# E501  line length is handled by the formatter, not the linter
+# B008   FastAPI's Depends() in defaults is the documented idiom
+# RUF012 dataclass-style mutable class attrs are intentional here
+# B905   zip() over a sequence and its own tail is deliberate pairwise iteration
+# RUF007 same - itertools.pairwise reads worse in the finance formulas
+# RUF001 filing text and formulas legitimately contain en/em dashes
+ignore = ["E501", "B008", "RUF012", "B905", "RUF007", "RUF001"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B018", "SIM117"]
+"creditlens/ingest/fixture_data.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
