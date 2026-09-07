@@ -563,3 +563,42 @@ class TestAdapterIntegration:
         assert verification["citation_validity"] == 1.0
         assert verification["unsupported_claim_rate"] == 0.0
         assert "confidence" in verification
+
+
+class TestOllamaModelResolution:
+    """A provider must not advertise a model that is not installed."""
+
+    def test_exact_match_is_kept(self, monkeypatch):
+        from creditlens.agent import providers
+
+        monkeypatch.setattr(providers, "installed_ollama_models",
+                            lambda url: ["qwen2.5:7b", "llama3.1:8b"])
+        assert providers._resolve_ollama_model("qwen2.5:7b", "http://x/v1") == "qwen2.5:7b"
+
+    def test_same_family_different_size_is_not_a_match(self, monkeypatch):
+        """qwen2.5:14b is not satisfied by qwen2.5:7b being installed."""
+        from creditlens.agent import providers
+
+        monkeypatch.setattr(providers, "installed_ollama_models",
+                            lambda url: ["qwen2.5:3b", "qwen2.5:7b"])
+        assert providers._resolve_ollama_model("qwen2.5:14b", "http://x/v1") == "qwen2.5:7b"
+
+    def test_largest_variant_wins(self, monkeypatch):
+        from creditlens.agent import providers
+
+        monkeypatch.setattr(providers, "installed_ollama_models",
+                            lambda url: ["qwen2.5:3b", "qwen2.5:7b", "qwen2.5:1.5b"])
+        assert providers._resolve_ollama_model(None, "http://x/v1") == "qwen2.5:7b"
+
+    def test_nothing_installed_leaves_the_request_alone(self, monkeypatch):
+        from creditlens.agent import providers
+
+        monkeypatch.setattr(providers, "installed_ollama_models", lambda url: [])
+        assert providers._resolve_ollama_model("qwen2.5:14b", "http://x/v1") == "qwen2.5:14b"
+
+    def test_parameter_parsing(self):
+        from creditlens.agent.providers import _parameter_billions
+
+        assert _parameter_billions("qwen2.5:14b") == 14.0
+        assert _parameter_billions("qwen2.5:1.5b") == 1.5
+        assert _parameter_billions("llama3:latest") == 0.0

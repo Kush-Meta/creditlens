@@ -18,6 +18,7 @@ service answers a narrower question rather than returning an error.
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -76,9 +77,65 @@ def _openai_like(provider: str, base_url: str | None) -> Callable[..., LLMEngine
         from creditlens.agent.providers.openai_engine import OpenAICompatibleEngine
 
         kwargs.setdefault("base_url", base_url)
+        if provider == "ollama":
+            kwargs["model"] = _resolve_ollama_model(kwargs.get("model"), base_url)
         return OpenAICompatibleEngine(provider=provider, **kwargs)
 
     return factory
+
+
+#: Preferred local models, in order, among those actually installed. Tool use is
+#: the constraint: a model that cannot call tools cannot drive the agent loop.
+_OLLAMA_PREFERENCE = ("qwen2.5", "qwen3", "llama3.1", "llama3.2", "mistral", "gemma3")
+
+
+def installed_ollama_models(base_url: str | None) -> list[str]:
+    if not base_url:
+        return []
+    import httpx
+
+    try:
+        response = httpx.get(f"{base_url.rstrip('/').removesuffix('/v1')}/api/tags", timeout=1.5)
+        response.raise_for_status()
+        return [m["name"] for m in response.json().get("models", [])]
+    except Exception:
+        return []
+
+
+def _resolve_ollama_model(requested: str | None, base_url: str | None) -> str | None:
+    """Name a model that is actually pulled.
+
+    Advertising a default that is not installed makes /health report a provider
+    as ready when the first request will fail. Better to report what is there.
+    """
+    installed = installed_ollama_models(base_url)
+    if not installed:
+        return requested
+    # Exact match only: "qwen2.5:14b" is not satisfied by "qwen2.5:7b" being
+    # installed, and treating it as satisfied is how a provider reports itself
+    # ready for a model that will 404 on the first request.
+    if requested and requested in installed:
+        return requested
+    for prefix in _OLLAMA_PREFERENCE:
+        # Within a family prefer the largest installed variant: 7b beats 3b, and
+        # tool-following on small local models degrades quickly with size.
+        matches = sorted(
+            (n for n in installed if n.startswith(prefix)),
+            key=_parameter_billions, reverse=True,
+        )
+        if matches:
+            chosen = matches[0]
+            if requested and requested != chosen:
+                log.info("requested ollama model is not installed; using an installed one",
+                         extra={"requested": requested, "using": chosen})
+            return chosen
+    return installed[0]
+
+
+def _parameter_billions(model: str) -> float:
+    """Parameter count parsed from an Ollama tag, for ranking variants."""
+    match = re.search(r"(\d+(?:\.\d+)?)b\b", model.lower())
+    return float(match.group(1)) if match else 0.0
 
 
 def _google(**kwargs: Any) -> LLMEngine:
