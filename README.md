@@ -2,6 +2,11 @@
 
 **Evidence-grounded credit analysis of public companies, from SEC filings and XBRL data.**
 
+[![ci](https://github.com/Kush-Meta/creditlens/actions/workflows/ci.yml/badge.svg)](https://github.com/Kush-Meta/creditlens/actions/workflows/ci.yml)
+
+📄 **[Design document](docs/DESIGN.md)** — the reasoning behind every decision,
+what was measured, and what was tried and abandoned.
+
 CreditLens answers questions a junior credit analyst would be asked — *"has Oracle's
 leverage improved?"*, *"what caused Microsoft's operating margin to move?"*,
 *"compare Oracle and Microsoft's liquidity"* — and returns a credit direction, the
@@ -38,6 +43,7 @@ got from a tool are surfaced as unsupported rather than shipped.
 - [Testing](#testing)
 - [Deployment](#deployment)
 - [Technology choices](#technology-choices)
+- [Embedding experiment: a negative result](#embedding-experiment-a-negative-result)
 - [Known limitations](#known-limitations)
 
 ---
@@ -743,12 +749,12 @@ OpenAPI docs at `/docs`.
 ## Testing
 
 ```bash
-make test        # 244 tests, ~9 s
+make test        # 263 tests, ~12 s
 make test-cov    # coverage report
 make check       # lint + tests, what CI runs
 ```
 
-**244 tests, 89% line coverage**, and the whole suite is hermetic — no network, no API
+**263 tests, 89% line coverage**, and the whole suite is hermetic — no network, no API
 key, no shared state. Every test runs against a temporary database seeded with the
 synthetic corpus.
 
@@ -810,6 +816,50 @@ execution and the next request, a forced terminal turn on budget exhaustion, and
 mid-loop engine substitution when a provider becomes unavailable. It is also
 what makes the loop portable — a vendor runner would have welded the agent to
 that vendor.
+
+---
+
+## Embedding experiment: a negative result
+
+The documented bottleneck was the hashed embedder. The obvious fix was a real
+embedding model, so a pluggable layer was built (`hashed`, `ollama`, `openai`,
+`google`) and `qwen3-embedding:0.6b` was evaluated locally on a 4,926-chunk
+sub-corpus, fully re-embedded, across 53 labelled cases.
+
+| Configuration | nDCG@8 hashed | nDCG@8 qwen3 | Δ |
+|---|---|---|---|
+| lexical only | 0.6766 | 0.6766 | — |
+| dense only | 0.5988 | 0.4995 | **−0.099** |
+| hybrid 50/50 | 0.6393 | 0.5859 | −0.053 |
+| shipped default | 0.6683 | 0.6560 | −0.012 |
+
+**The real model was worse on every measure.** Three explanations were tested:
+
+1. **Integration bug?** No — self-retrieval is exact. Embedding a chunk's own
+   text and searching returns that chunk at similarity 1.0000 with correct
+   argmax.
+2. **Query/document asymmetry?** Partly. Qwen3-Embedding is instruction-tuned
+   and expects a task instruction on the query side only. This was implemented
+   (`Embedder.embed_query`, with per-model prefixes for the Qwen3/E5/BGE
+   families) and improved dense-only from 0.4856 to 0.4995 — real, but nowhere
+   near closing the gap.
+3. **"The hashed embedder is really a second lexical ranker, so keyword labels
+   favour it."** This was the leading hypothesis and it is **false**. Measured
+   top-20 overlap with the BM25 ranking: hashed **0.360**, qwen3 **0.390**. The
+   real model is if anything *more* BM25-aligned.
+
+**The default was not changed**, because changing it is not supported by
+evidence. What the experiment did establish is a limit on the *methodology*: the
+paraphrase probe removes label bias from the query side but not from the labels
+themselves, which still require specific literal terms. The harness cannot
+adjudicate lexical versus semantic retrieval in either direction — so
+human-judged relevance moves from "roadmap item" to **blocking prerequisite for
+any further retrieval work**.
+
+The layer ships regardless: tested, with a resumable batched migration
+(`creditlens reembed`), so the question is answerable the moment better labels
+exist. Local throughput measured at 10.6 chunks/s — about 85 minutes for the
+full corpus, a cost deliberately not paid.
 
 ---
 
