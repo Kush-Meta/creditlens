@@ -15,7 +15,12 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+)
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
@@ -31,6 +36,7 @@ from creditlens.api.schemas import (
     EvalRequest,
     HealthResponse,
     IngestRequest,
+    ProvenanceRequest,
     SearchRequest,
 )
 from creditlens.config import get_settings
@@ -238,6 +244,40 @@ def _register_routes(app: FastAPI) -> None:
         )
         return result.to_dict(include_text=payload.include_text)
 
+    # ---------------- provenance ----------------
+    @app.post("/api/provenance", tags=["provenance"])
+    def provenance(
+        payload: ProvenanceRequest, session: Session = Depends(get_session)
+    ) -> dict[str, Any]:
+        """Answer a question about data lineage.
+
+        Deterministic: the reply is read from recorded provenance, not generated,
+        so this endpoint cannot invent a source for a number.
+        """
+        from creditlens.agent.provenance import answer as provenance_answer
+
+        return provenance_answer(session, payload.question).to_dict()
+
+    @app.get("/api/provenance/metric/{ticker}/{metric}", tags=["provenance"])
+    def metric_lineage(
+        ticker: str,
+        metric: str,
+        period: str | None = None,
+        session: Session = Depends(get_session),
+    ) -> dict[str, Any]:
+        """Full lineage tree for one metric, down to the filings behind it."""
+        from creditlens.agent.provenance import LineageResolver
+
+        if metric not in ratio_mod.REGISTRY:
+            raise HTTPException(
+                status_code=404,
+                detail=f"unknown ratio '{metric}'; see /api/config for the catalog",
+            )
+        resolver = LineageResolver(session, ticker)
+        if resolver.company is None:
+            raise HTTPException(status_code=404, detail=f"unknown ticker '{ticker}'")
+        return resolver.resolve_ratio(metric, period).to_dict()
+
     # ---------------- analysis ----------------
     @app.post("/api/analyze", tags=["analysis"])
     def analyze(
@@ -353,20 +393,52 @@ def _register_routes(app: FastAPI) -> None:
         }
 
     # ---------------- frontend ----------------
+    # `no-cache` means "revalidate before reuse", not "never cache": the browser
+    # still gets a 304 when nothing changed. Without it a cached app.js runs
+    # against freshly served HTML, which fails in a way that looks like a code
+    # bug rather than a caching one.
+    _STATIC_HEADERS = {"Cache-Control": "no-cache"}
+
     @app.get("/", include_in_schema=False)
-    def index() -> FileResponse:
+    def index() -> HTMLResponse:
+        """Serve the UI with content-hashed asset URLs.
+
+        `Cache-Control` alone does not rescue a browser that already stored the
+        old script: it keeps serving it until that entry expires, so new HTML
+        runs against stale JavaScript. Stamping the asset URLs with a hash of
+        their contents makes every change a new URL, which no cache can get
+        wrong.
+        """
         path = WEB_DIR / "index.html"
         if not path.exists():
             raise HTTPException(status_code=404, detail="frontend not built")
-        return FileResponse(path)
+        html = path.read_text(encoding="utf-8")
+        for asset in ("app.js", "styles.css"):
+            html = html.replace(f"/{asset}", f"/{asset}?v={_asset_version(asset)}")
+        return HTMLResponse(html, headers=_STATIC_HEADERS)
 
     @app.get("/app.js", include_in_schema=False)
     def app_js() -> FileResponse:
-        return FileResponse(WEB_DIR / "app.js", media_type="application/javascript")
+        return FileResponse(
+            WEB_DIR / "app.js", media_type="application/javascript",
+            headers=_STATIC_HEADERS,
+        )
 
     @app.get("/styles.css", include_in_schema=False)
     def app_css() -> FileResponse:
-        return FileResponse(WEB_DIR / "styles.css", media_type="text/css")
+        return FileResponse(
+            WEB_DIR / "styles.css", media_type="text/css", headers=_STATIC_HEADERS,
+        )
+
+
+def _asset_version(name: str) -> str:
+    """Short content hash of a static asset, used to bust browser caches."""
+    import hashlib
+
+    path = WEB_DIR / name
+    if not path.exists():
+        return __version__
+    return hashlib.blake2b(path.read_bytes(), digest_size=6).hexdigest()
 
 
 def _ctx(session: Session) -> ToolContext:

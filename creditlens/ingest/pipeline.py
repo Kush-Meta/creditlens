@@ -25,7 +25,11 @@ from creditlens.db.models import Chunk, Company, Embedding, Filing, FinancialFac
 from creditlens.ingest.chunker import TextChunk, chunk_sections
 from creditlens.ingest.edgar_client import EdgarClient, FilingRef
 from creditlens.ingest.filing_parser import Section, parse_filing_html
-from creditlens.ingest.xbrl_normalizer import NormalizedFact, normalize_company_facts
+from creditlens.ingest.xbrl_normalizer import (
+    NormalizedFact,
+    infer_calendar,
+    normalize_company_facts,
+)
 from creditlens.observability import METRICS, Trace, get_logger
 from creditlens.retrieval import bm25 as bm25_mod
 from creditlens.retrieval import corpus as corpus_mod
@@ -240,6 +244,9 @@ class FetchedIssuer:
     name: str
     facts: list[NormalizedFact]
     filings: list[FetchedFiling]
+    #: the issuer's inferred fiscal calendar, so filings are labelled with the
+    #: fiscal period they report on rather than the calendar quarter they end in
+    calendar: Any = None
     warnings: list[str] = field(default_factory=list)
     fetch_seconds: float = 0.0
 
@@ -269,6 +276,7 @@ def fetch_issuer(
         payload = client.company_facts(cik)
     with trace.span("xbrl.normalize", ticker=ticker):
         facts = normalize_company_facts(payload, min_fiscal_year=min_fiscal_year)
+        calendar = infer_calendar(payload)
     with trace.span("edgar.submissions", cik=cik):
         refs = client.recent_filings(cik, forms=forms, limit=max_filings)
 
@@ -289,7 +297,7 @@ def fetch_issuer(
     _ = settings  # settings are read during persistence; touched here for clarity
     return FetchedIssuer(
         ticker=ticker.upper(), cik=cik, name=name, facts=facts, filings=fetched,
-        warnings=warnings,
+        calendar=calendar, warnings=warnings,
         fetch_seconds=(dt.datetime.now(dt.UTC) - started).total_seconds(),
     )
 
@@ -316,7 +324,7 @@ def persist_issuer(
     for item in issuer.filings:
         ref = item.ref
         period_end = _date(ref.report_date)
-        fiscal_year, fiscal_period = _fiscal_from_ref(ref, period_end)
+        fiscal_year, fiscal_period = _fiscal_from_ref(ref, period_end, issuer.calendar)
         filing = upsert_filing(
             session, company,
             accession=ref.accession, form_type=ref.form_type,
@@ -498,12 +506,61 @@ def _date(value: str | None) -> dt.date | None:
         return None
 
 
-def _fiscal_from_ref(ref: FilingRef, period_end: dt.date | None) -> tuple[int | None, str | None]:
+def _fiscal_from_ref(
+    ref: FilingRef, period_end: dt.date | None, calendar: Any = None
+) -> tuple[int | None, str | None]:
+    """Label a filing with the fiscal period it reports on.
+
+    The calendar quarter a filing ends in is not its fiscal quarter: Oracle's
+    10-Q ending 28 February is fiscal Q3, not calendar Q1. Labelling by calendar
+    quarter puts a filing under the wrong period everywhere it is displayed -
+    including the provenance view, whose entire job is saying which filing a
+    number came from.
+    """
     if period_end is None:
         return None, None
+    if calendar is not None:
+        fiscal_year = calendar.fiscal_year(period_end)
+        if ref.form_type == "10-K":
+            return fiscal_year, "FY"
+        return fiscal_year, calendar.fiscal_period(period_end, is_annual=False)
     if ref.form_type == "10-K":
         return period_end.year, "FY"
     return period_end.year, f"Q{(period_end.month - 1) // 3 + 1}"
+
+
+def relabel_filing_periods(session: Session) -> int:
+    """Backfill fiscal labels on filings from the fact table.
+
+    The fact rows already carry correct fiscal labels, keyed by period end, so
+    existing corpora can be corrected without re-downloading anything.
+    """
+    updated = 0
+    filings = list(session.scalars(select(Filing)))
+    for filing in filings:
+        if filing.period_end is None:
+            continue
+        row = session.execute(
+            select(FinancialFact.fiscal_year, FinancialFact.fiscal_period)
+            .where(
+                FinancialFact.company_id == filing.company_id,
+                FinancialFact.period_end == filing.period_end,
+                FinancialFact.fiscal_period != "FY" if filing.form_type != "10-K" else
+                FinancialFact.fiscal_period == "FY",
+            )
+            .limit(1)
+        ).first()
+        if row is None:
+            continue
+        fiscal_year, fiscal_period = row
+        if (filing.fiscal_year, filing.fiscal_period) != (fiscal_year, fiscal_period):
+            filing.fiscal_year, filing.fiscal_period = fiscal_year, fiscal_period
+            updated += 1
+    if updated:
+        session.commit()
+        refresh_indexes()
+    log.info("filing periods relabelled", extra={"updated": updated, "total": len(filings)})
+    return updated
 
 
 def delete_company(session: Session, ticker: str) -> bool:

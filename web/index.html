@@ -46,6 +46,7 @@
       <button class="tab active" data-panel="analyze">Analyze</button>
       <button class="tab" data-panel="metrics">Metrics</button>
       <button class="tab" data-panel="search">Filing search</button>
+      <button class="tab" data-panel="provenance">Provenance</button>
       <button class="tab" data-panel="evaluation">Evaluation</button>
     </div>
 
@@ -89,6 +90,21 @@
         <button class="btn primary" type="submit">Search</button>
       </form>
       <div id="search-output" class="muted">Hybrid BM25 + dense retrieval with reciprocal rank fusion.</div>
+    </section>
+
+    <!-- PROVENANCE -->
+    <section class="panel" id="panel-provenance" hidden>
+      <div class="muted" style="margin-bottom:14px">
+        Ask where any number comes from. Answers are read from recorded lineage,
+        not generated &mdash; this surface cannot invent a source.
+      </div>
+      <div class="chat" id="prov-chat"></div>
+      <form class="ask-form" id="prov-form">
+        <input type="text" id="prov-question" autocomplete="off"
+               placeholder="Where does Oracle&rsquo;s debt-to-EBITDA come from?">
+        <button class="btn primary" type="submit">Ask</button>
+      </form>
+      <div class="examples" id="prov-examples"></div>
     </section>
 
     <!-- EVALUATION -->

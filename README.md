@@ -36,6 +36,7 @@ got from a tool are surfaced as unsupported rather than shipped.
 - [Retrieval](#retrieval)
 - [Agent](#agent)
 - [LLM providers](#llm-providers)
+- [Provenance: asking where a number came from](#provenance-asking-where-a-number-came-from)
 - [Verification](#verification)
 - [Evaluation and measured results](#evaluation-and-measured-results)
 - [Observability](#observability)
@@ -121,7 +122,7 @@ A question goes in; a structured, checked analysis comes out:
 
 The web UI exposes the same thing plus a metric explorer (all 29 ratios, the credit
 scorecard, data-coverage report), filing search with per-hit score decomposition,
-and an evaluation runner.
+an evaluation runner, and a **provenance chat** (below).
 
 ---
 
@@ -515,6 +516,64 @@ answers a narrower question instead of returning an error.
 
 ---
 
+## Provenance: asking where a number came from
+
+A separate surface from analysis, and a deliberately different kind of engine.
+
+Analysis asks *what does the evidence mean*, which is a language task. Provenance
+asks *where did this number come from*, which is **not** — the answer is already
+recorded, exactly, in the provenance attached to every value. Inferring it with a
+model would be strictly worse: slower, more expensive, and capable of being wrong
+about the one thing the surface exists to be right about.
+
+So the lineage engine is deterministic end to end. It walks the recorded
+provenance graph and resolves it to source filings:
+
+```
+Debt / EBITDA  4.33x                                          [computed]
+  computed by the ratio engine · total_debt / EBITDA
+  total_debt   $129.54B                                       [reported]
+    reported by the filer in XBRL · as reported by the filer
+    tag DebtLongtermAndShorttermCombinedAmount
+    10-K FY2026 filed 2026-06-22 → sec.gov/Archives/...
+  ebitda        $29.90B                                       [derived]
+    summed across a trailing twelve-month window
+    ebitda      $8.98B  (Q42026)                              [derived]
+      operating_income + depreciation_amortization
+      operating_income  $6.13B                                [derived]
+        reconstructed: fiscal year minus the first three quarters
+        tag OperatingIncomeLoss · 10-K FY2026 → sec.gov/Archives/...
+```
+
+Every leaf terminates in either a filed XBRL fact with its accession and a link
+to the filing on sec.gov, or an explicit statement that the value was derived and
+by what formula. **Nothing in this module can produce a number that is not
+already in the store** — which is asserted as a test: every leaf of a lineage
+tree must carry an accession, a formula, or an explicit origin.
+
+It answers several kinds of question:
+
+| Question | What it does |
+|---|---|
+| *"Where does Oracle's debt-to-EBITDA come from?"* | full lineage tree down to filings |
+| *"Why can't you compute Ford's leverage?"* | names the missing concept and explains why filers omit it |
+| *"What data do you have for Ford?"* | periods held, ratios computable, ratios blocked and why |
+| *"What filings do you have for Apple?"* | every filing with accession and link |
+| *"How do you verify the numbers?"* | the verification, retrieval, derivation and sourcing design |
+| *"How are Q4 figures derived?"* | `derived-q4`, `derived-from-ytd`, `derived-ttm`, `carried-forward` |
+
+Two bugs this surface exposed and fixed, both of which had been silently wrong:
+
+- **Filings were labelled with calendar quarters, not fiscal ones.** Oracle's
+  10-Q ending 28 February is fiscal Q3, and was displayed as Q1. Wrong everywhere
+  a filing is shown — most damagingly here, where the whole point is saying which
+  filing a number came from. Fixed at the source and backfilled across 96 filings.
+- **Static assets were cache-stale.** A browser holding an old `app.js` ran it
+  against newly served HTML, which fails in a way that looks like a code bug.
+  Assets are now content-hashed in the URL.
+
+---
+
 ## Verification
 
 Prompting a model to "only use numbers from tools" is a request, not a guarantee.
@@ -738,6 +797,8 @@ requires an EDGAR ingest and runs on demand.
 | `POST` | `/api/compare` | multi-issuer ratio and scorecard comparison |
 | `POST` | `/api/search` | hybrid retrieval with score decomposition |
 | `POST` | `/api/analyze` | full agent analysis |
+| `POST` | `/api/provenance` | ask where a number came from (deterministic) |
+| `GET` | `/api/provenance/metric/{t}/{ratio}` | full lineage tree for one metric |
 | `GET` | `/api/runs`, `/api/runs/{id}` | analysis history with verification metrics |
 | `POST` | `/api/ingest`, `/api/ingest/fixtures` | ingest an issuer / load the demo corpus |
 | `POST` | `/api/eval/run`, `GET /api/eval/runs` | run and browse evaluations |
@@ -749,12 +810,12 @@ OpenAPI docs at `/docs`.
 ## Testing
 
 ```bash
-make test        # 263 tests, ~12 s
+make test        # 307 tests, ~12 s
 make test-cov    # coverage report
 make check       # lint + tests, what CI runs
 ```
 
-**263 tests, 89% line coverage**, and the whole suite is hermetic — no network, no API
+**307 tests, 89% line coverage**, and the whole suite is hermetic — no network, no API
 key, no shared state. Every test runs against a temporary database seeded with the
 synthetic corpus.
 

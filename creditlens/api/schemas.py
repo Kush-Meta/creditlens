@@ -38,6 +38,11 @@ class SearchRequest(BaseModel):
     include_text: bool = False
 
 
+class ProvenanceRequest(BaseModel):
+    question: str = Field(min_length=2, max_length=500,
+                          description="A question about where the data comes from.")
+
+
 class IngestRequest(BaseModel):
     ticker: str = Field(min_length=1, max_length=8)
     max_filings: int = Field(default=6, ge=1, le=20)

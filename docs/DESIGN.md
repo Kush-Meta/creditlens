@@ -20,6 +20,7 @@ where a hypothesis was tested and turned out to be wrong.
 6. [Agent](#6-agent)
 7. [Provider abstraction](#7-provider-abstraction)
 8. [Verification](#8-verification)
+8b. [Provenance surface](#8b-provenance-surface)
 9. [Evaluation](#9-evaluation)
 10. [Scaling](#10-scaling)
 11. [Embedding experiment: a negative result](#11-embedding-experiment-a-negative-result)
@@ -481,6 +482,48 @@ attached to the wrong metric.
 
 ---
 
+## 8b. Provenance surface
+
+A second, deliberately non-LLM surface: a chat that answers *where did this
+number come from*.
+
+**Why it is not an agent.** Analysis is a language task; lineage is not. The
+answer is already recorded exactly, in the provenance the calculation engine
+attaches to every value. A model asked to infer it would be slower, more
+expensive, and capable of being wrong about the one thing the surface exists to
+be right about. So `agent/provenance.py` is deterministic end to end: intent is
+matched by pattern, and every fact in the reply is read from the store.
+
+**The resolver** walks recorded provenance recursively:
+
+- `derived-ttm` → recurse into the same concept across the window's quarters
+- `derived` → recurse into the sibling concepts named in `derived_from`
+- otherwise → terminate at the stored fact, resolving its accession to a filing
+  and a link on sec.gov
+
+Depth-bounded, and where no fact row matches the concept name (a value mirrored
+from a differently-named tag, such as `total_debt` from a filer-reported
+combined amount) it falls back to the accession and tag carried on the
+provenance itself.
+
+**The invariant, asserted in tests:** every leaf carries an accession, a formula,
+or an explicit origin. Nothing appears from nowhere.
+
+**Two latent bugs this surface exposed:**
+
+1. Filings were labelled by *calendar* quarter. Oracle's 10-Q ending 28 February
+   is fiscal Q3 and displayed as Q1. Wrong wherever a filing is shown, and
+   fatal for a lineage view. Fixed in `_fiscal_from_ref` by threading the
+   inferred fiscal calendar through ingestion, plus a backfill
+   (`relabel_filing_periods`) that corrects existing corpora from the fact table
+   without re-downloading anything — 96 filings relabelled.
+2. Static assets were cache-stale: a browser reusing an old `app.js` against new
+   HTML fails in a way indistinguishable from a code bug. `Cache-Control:
+   no-cache` alone does not rescue an already-stored entry, so asset URLs are
+   content-hashed.
+
+---
+
 ## 9. Evaluation
 
 209 cases across three suites:
@@ -651,7 +694,7 @@ because the evidence did not justify it.
 
 ## 13. Testing strategy
 
-**263 tests, 89% line coverage, ~12 s, entirely hermetic** — no network, no key,
+**307 tests, 89% line coverage, ~12 s, entirely hermetic** — no network, no key,
 no shared state. Every test runs against a temporary database seeded with the
 synthetic corpus.
 
@@ -665,6 +708,7 @@ synthetic corpus.
 | `test_api` | HTTP contract |
 | `test_eval` | metric correctness against hand-computed values |
 | `test_edgar_client` | rate limiting, caching, retry via a stub transport |
+| `test_provenance` | entity resolution, lineage invariants, answer intents, API |
 | `test_observability` | tracing, metrics, logging |
 
 Two deliberate choices:

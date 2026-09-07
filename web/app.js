@@ -381,6 +381,128 @@ async function runSearch(event) {
   }
 }
 
+/* -------------------------------------------------------------- provenance */
+const PROVENANCE_EXAMPLES = [
+  "Where does Oracle's debt-to-EBITDA come from?",
+  "Why can't you compute Ford's leverage?",
+  "How do you verify the numbers?",
+  "What companies do you have?",
+  "How are Q4 figures derived?",
+  "What filings do you have for Apple?",
+  "Where does Microsoft's revenue come from?",
+];
+
+function renderLineage(node, depth = 0) {
+  const meta = [];
+  if (node.formula) meta.push(node.formula);
+  if (node.xbrl_tag) meta.push(`tag ${node.xbrl_tag}`);
+  if (node.filing) meta.push(node.filing);
+  if (node.period && depth > 0) meta.push(node.period);
+
+  return el('div', { class: `lin-node${depth === 0 ? ' root' : ''}` },
+    el('div', { class: 'lin-row' },
+      el('span', { class: 'lin-label' }, node.label),
+      node.display ? el('span', { class: 'lin-value' }, node.display) : null,
+      el('span', { class: `lin-kind ${node.kind}` }, node.kind),
+      node.is_synthetic ? el('span', { class: 'chip-synth' }, 'synthetic') : null),
+    meta.length || node.origin || node.url
+      ? el('div', { class: 'lin-meta' },
+          [node.origin, ...meta].filter(Boolean).join(' \u00b7 '),
+          node.url ? ' ' : null,
+          node.url
+            ? el('a', { href: node.url, target: '_blank', rel: 'noopener' }, 'open filing')
+            : null)
+      : null,
+    node.note ? el('div', { class: 'lin-meta' }, node.note) : null,
+    ...(node.children || []).map((child) => renderLineage(child, depth + 1)));
+}
+
+function renderProvenanceAnswer(payload) {
+  const nodes = [el('div', { class: 'intent' }, payload.intent.replace(/_/g, ' '))];
+  nodes.push(el('div', { class: 'summary' }, payload.summary));
+
+  const detail = (payload.detail || []).filter(Boolean);
+  if (detail.length) {
+    nodes.push(el('ul', { class: 'detail' }, detail.map((d) => el('li', {}, d))));
+  }
+  if (payload.lineage) {
+    nodes.push(el('div', { class: 'lineage' }, renderLineage(payload.lineage)));
+  }
+  if (payload.table?.length) {
+    const columns = Object.keys(payload.table[0]).filter((c) => c !== 'url');
+    nodes.push(el('div', { class: 'scroll-x prov-table' }, el('table', {},
+      el('thead', {}, el('tr', {}, columns.map((c) => el('th', {}, c.replace(/_/g, ' '))))),
+      el('tbody', {}, payload.table.slice(0, 40).map((row) => el('tr', {},
+        columns.map((c) => el('td', { class: typeof row[c] === 'number' ? 'num' : '' },
+          row.url && c === columns[0]
+            ? el('a', { href: row.url, target: '_blank', rel: 'noopener' }, String(row[c]))
+            : String(row[c])))))))));
+  }
+  if (payload.citations?.length) {
+    nodes.push(el('div', { class: 'lin-meta', style: 'margin-top:12px' },
+      'Filings behind this answer: ',
+      ...payload.citations.flatMap((citation, index) => [
+        index ? ', ' : '',
+        citation.url
+          ? el('a', { href: citation.url, target: '_blank', rel: 'noopener' },
+              citation.filing || citation.accession)
+          : (citation.filing || citation.accession),
+      ])));
+  }
+  if (payload.contains_synthetic) {
+    nodes.push(el('div', { class: 'notice', style: 'margin-top:12px' },
+      'This answer involves fictional demo issuers; those figures are synthetic, not filed results.'));
+  }
+  if (payload.followups?.length) {
+    nodes.push(el('div', { class: 'followups' }, payload.followups.map((q) =>
+      el('button', {
+        class: 'followup',
+        onclick: () => { $('#prov-question').value = q; $('#prov-form').requestSubmit(); },
+      }, q))));
+  }
+  return el('div', { class: 'msg bot' }, el('div', { class: 'bubble' }, ...nodes));
+}
+
+async function askProvenance(event) {
+  event.preventDefault();
+  const input = $('#prov-question');
+  const question = input.value.trim();
+  if (!question) return;
+  const chat = $('#prov-chat');
+  chat.append(el('div', { class: 'msg user' }, question));
+  input.value = '';
+  const pending = el('div', { class: 'msg bot' },
+    el('div', { class: 'bubble' }, el('span', { class: 'spinner' }), 'Tracing lineage…'));
+  chat.append(pending);
+  pending.scrollIntoView({ block: 'nearest' });
+  try {
+    const payload = await api('/api/provenance', {
+      method: 'POST', body: JSON.stringify({ question }),
+    });
+    pending.replaceWith(renderProvenanceAnswer(payload));
+  } catch (error) {
+    pending.replaceWith(el('div', { class: 'msg bot' },
+      el('div', { class: 'notice error' }, error.message)));
+  }
+  chat.lastElementChild?.scrollIntoView({ block: 'nearest' });
+}
+
+function initProvenance() {
+  $('#prov-examples').replaceChildren(...PROVENANCE_EXAMPLES.map((q) =>
+    el('button', {
+      class: 'example',
+      onclick: () => { $('#prov-question').value = q; $('#prov-form').requestSubmit(); },
+    }, q)));
+  $('#prov-chat').replaceChildren(el('div', { class: 'msg bot' },
+    el('div', { class: 'bubble' },
+      el('div', { class: 'summary' },
+        'Ask where a number comes from and I will trace it to the filing that reported it.'),
+      el('ul', { class: 'detail' },
+        el('li', {}, 'Every answer is read from recorded provenance, not generated.'),
+        el('li', {}, 'Leaves terminate in an XBRL tag and a link to the filing on sec.gov.'),
+        el('li', {}, 'Derived values say so, and say by what formula.')))));
+}
+
 /* -------------------------------------------------------------- evaluation */
 async function runEval() {
   const output = $('#eval-output');
@@ -520,6 +642,8 @@ function init() {
   $('#ingest-btn').addEventListener('click', ingest);
   $('#ingest-ticker').addEventListener('keydown', (e) => { if (e.key === 'Enter') ingest(); });
   $('#seed-btn').addEventListener('click', seed);
+  $('#prov-form').addEventListener('submit', askProvenance);
+  initProvenance();
   $('#eval-btn').addEventListener('click', runEval);
   $('#eval-history-btn').addEventListener('click', loadEvalHistory);
   loadHealth();
